@@ -1,0 +1,451 @@
+---
+title: "Factors Influencing Student JAMB Scores"
+author: "Group Members: Alicia, Bruce, Kyle, Victor"
+date: "2024/11/09"
+output: pdf_document
+---
+
+# Statement of the Problem
+
+The primary objective of this study is to investigate the factors that influence students' JAMB scores (Joint Admissions and Matriculation Board scores). Specifically, we aim to answer the following questions:
+
+- How do study habits and attendance affect JAMB scores?
+- What is the impact of socioeconomic factors on students' academic performance in the JAMB examination?
+- Are there significant differences in JAMB scores based on school type or location?
+
+# Introduction
+
+## Background
+
+The JAMB examination is a standardized test in Nigeria used for admission into tertiary institutions. Students' performance in this exam is crucial for their academic progression. Various factors such as study habits, school environment, and socioeconomic status may influence JAMB scores. Prior research suggests that factors like study hours, attendance, and parental involvement significantly impact standardized test scores.
+
+## Analysis Plan
+
+We plan to use linear regression models to analyze the relationship between the predictors and the JAMB scores. We will:
+
+- Check the assumptions required for linear regression.
+- Use forward stepwise selection to identify significant predictors.
+- Validate the final model using diagnostic tests.
+
+# Data Collection
+
+## Dataset Description
+
+- **Source:** Collected from a survey of high school students preparing for the JAMB examination.
+- **Sample Size:** 5000 students.
+- **Variables:**
+
+  - **Dependent Variable:** `JAMB_Score` (Students' scores in the JAMB examination, 100-400).
+  - **Independent Variables:**
+    - `Study_Hours_Per_Week`
+    - `Attendance_Rate`
+    - `Teacher_Quality` (Scale 1-5)
+    - `Distance_To_School`
+    - `School_Type` (Public/Private)
+    - `School_Location` (Urban/Rural)
+    - `Extra_Tutorials` (Yes/No)
+    - `Access_To_Learning_Materials` (Yes/No)
+    - `Parent_Involvement` (Low/Medium/High)
+    - `IT_Knowledge` (Low/Medium/High)
+    - `Age`
+    - `Gender` (Male/Female)
+    - `Socioeconomic_Status` (Low/Medium/High)
+    - `Parent_Education_Level` (Primary/Secondary/Tertiary)
+
+## Loading the Data
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load necessary packages
+library(car)
+library(leaps)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(dplyr)
+library(ggcorrplot)
+library(GGally)
+
+# Read the data
+data <- read.csv("jamb_exam_results.csv")
+```
+
+# Data Exploration
+
+## Summary Statistics
+
+```{r}
+summary(data)
+```
+
+## Visualization
+
+```{r}
+## Distribution of JAMB Scores
+data <- read.csv("jamb_exam_results.csv")
+ggplot(data, aes(x = JAMB_Score)) +
+  geom_histogram(binwidth = 10, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of JAMB Scores", x = "JAMB Score", y = "Count")
+
+```
+
+```{r}
+## Extended Correlation Matrix with Additional Factors
+
+library(ggcorrplot)
+
+numerical_vars <- data %>%
+  select(JAMB_Score, Study_Hours_Per_Week, Attendance_Rate, Teacher_Quality, 
+         Distance_To_School, Age, Assignments_Completed, Teacher_Quality, Attendance_Rate)
+
+corr <- round(cor(numerical_vars), 1)
+
+ggcorrplot(
+  corr,
+  lab = TRUE,
+  title = "Correlation Matrix"
+)
+
+
+```
+
+```{r}
+## Distribution of JAMB Scores Separated by Gender (Density Plot)
+
+ggplot(data, aes(x = JAMB_Score, fill = Gender)) +
+  geom_density(alpha = 0.7) +  
+  scale_fill_manual(values = c("lightblue", "lightpink")) +
+  labs(
+    title = "Distribution of JAMB Scores by Gender",
+    x = "JAMB Score",
+    y = "Density",
+    fill = "Gender"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14)
+  )
+
+```
+
+
+
+
+
+```{r}
+## JAMB Score by Socioeconomic Status and Parent Education Level
+
+data$Socioeconomic_Status <- factor(data$Socioeconomic_Status, levels = c("Low", "Medium", "High"))
+
+ggplot(data, aes(x = Socioeconomic_Status, y = JAMB_Score, fill = Parent_Education_Level)) +
+  geom_boxplot() +
+  labs(title = "JAMB Score by Socioeconomic Status and Parent Education Level", 
+       x = "Socioeconomic Status", 
+       y = "JAMB Score")
+
+
+```
+
+
+
+```{r}
+## Distribution of JAMB Scores by School Location and School Type
+
+library(ggplot2)
+
+ggplot(data, aes(x = School_Location, y = JAMB_Score, fill = School_Type)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA, width = 0.6) + 
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "red", 
+               position = position_dodge(width = 0.6)) + 
+  labs(
+    title = "JAMB Scores by School Location and School Type",
+    x = "School Location",
+    y = "JAMB Score",
+    fill = "School Type"
+  ) +
+  scale_fill_brewer(palette = "Dark2") + 
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    axis.text = element_text(size = 12), 
+    axis.title = element_text(size = 14), 
+    legend.position = "top",  
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  )
+
+
+```
+
+```{r}
+##  Teacher Quality
+
+library(ggplot2)
+
+ggplot(data, aes(x = factor(Teacher_Quality), y = JAMB_Score, fill = factor(Teacher_Quality))) +
+  geom_violin(trim = FALSE, alpha = 0.7) +  
+  geom_boxplot(width = 0.2, outlier.shape = NA, color = "black", alpha = 0.5) +
+  scale_fill_brewer(palette = "Reds") + 
+  labs(
+    title = "JAMB Scores by  Teacher Quality",
+    x = "Teacher Quality (1 = Low, 5 = High)",
+    y = "JAMB Score",
+    fill = "Teacher Quality"
+  ) +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"), 
+    axis.text = element_text(size = 12), 
+    axis.title = element_text(size = 14),  
+    legend.position = "right" 
+  )
+
+```
+
+```{r}
+## Study Hours and Attendance Rate
+
+library(ggplot2)
+
+ggplot(data, aes(x = Study_Hours_Per_Week, y = Attendance_Rate, size = JAMB_Score, color = JAMB_Score)) +
+  geom_point(alpha = 0.6) +  
+  scale_color_gradient(low = "blue", high = "red") +  
+  labs(
+    title = "JAMB Scores by Study Hours and Attendance Rate",
+    x = "Study Hours Per Week",
+    y = "Attendance Rate (%)",
+    size = "JAMB Score",
+    color = "JAMB Score"
+  ) +
+  theme_minimal() +  
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"), 
+    axis.text = element_text(size = 12),  
+    axis.title = element_text(size = 14)  
+  )
+
+```
+```{r}
+## Extra Tutorials and Access to Learning Materials
+
+data$Tutorials_Materials <- paste(data$Extra_Tutorials, data$Access_To_Learning_Materials, sep = ", ")
+
+mean_scores <- data %>%
+  group_by(Tutorials_Materials) %>%
+  summarise(Mean_Score = mean(JAMB_Score))
+
+library(ggplot2)
+
+ggplot(data, aes(x = Tutorials_Materials, y = JAMB_Score, fill = Tutorials_Materials)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +  
+  geom_point(data = mean_scores, aes(x = Tutorials_Materials, y = Mean_Score), 
+             color = "#EE5C42", size = 3, shape = 18) + 
+  geom_text(data = mean_scores, aes(x = Tutorials_Materials, y = Mean_Score, label = round(Mean_Score, 1)), 
+            vjust = -0.5, color = "#EE5C42", size = 4) +  
+  scale_fill_brewer(palette = "GnBu") +
+  labs(
+    title = "Extra Tutorials and Access to Learning Materials",
+    x = "Combination of Extra Tutorials and Access to Learning Materials",
+    y = "JAMB Score",
+    fill = "Combination"
+  ) +
+  theme_classic() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"), 
+    axis.text = element_text(size = 12), 
+    axis.title = element_text(size = 14) 
+  )
+
+```
+
+```{r}
+## Distance to School
+
+library(ggplot2)
+
+ggplot(data, aes(x = Distance_To_School, y = JAMB_Score)) +
+  geom_point(aes(color = Distance_To_School), alpha = 0.6, size = 2) + 
+  geom_smooth(method = "lm", se = TRUE, color = "#97FFFF", linetype = "dashed") +
+  scale_color_gradient(low = "green", high = "red") +
+  labs(
+    title = "JAMB Scores by Distance to School",
+    x = "Distance to School (km)",
+    y = "JAMB Score",
+    color = "Distance"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"), 
+    axis.text = element_text(size = 12), 
+    axis.title = element_text(size = 14) 
+  )
+
+```
+
+```{r}
+##  Ages
+
+library(ggplot2)
+
+ggplot(data, aes(x = factor(Age), y = JAMB_Score, fill = factor(Age))) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) + 
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "red") +  
+  scale_fill_viridis_d(option = "plasma") + 
+  labs(
+    title = "JAMB Score Distribution by Age",
+    x = "Age",
+    y = "JAMB Score",
+    fill = "Age"
+  ) +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"), 
+    axis.text = element_text(size = 12),  
+    axis.title = element_text(size = 14),  
+    legend.position = "none" 
+  )
+
+```
+
+```{r}
+##  Involvement
+data$Parent_Involvement <- factor(data$Parent_Involvement, levels = c("Low", "Medium", "High"))
+
+library(ggplot2)
+
+ggplot(data, aes(x = Parent_Involvement, y = JAMB_Score, fill = Parent_Involvement)) +
+  geom_violin(trim = FALSE, alpha = 0.7) + 
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.5, outlier.shape = NA) +  
+  scale_fill_brewer(palette = "Accent") +
+  labs(
+    title = "JAMB Scores by Parent Involvement",
+    x = "Parent Involvement Level",
+    y = "JAMB Score",
+    fill = "Parent Involvement"
+  ) +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14),
+    legend.position = "none" 
+  )
+
+```
+
+```{r}
+## IT Knowledge
+
+
+data$IT_Knowledge <- factor(data$IT_Knowledge, levels = c("Low", "Medium", "High"))
+
+library(ggplot2)
+
+ggplot(data, aes(x = IT_Knowledge, y = JAMB_Score, fill = IT_Knowledge)) +
+  geom_violin(trim = FALSE, alpha = 0.7) +  
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.5, outlier.shape = NA) +  # Boxplot overlay
+  scale_fill_brewer(palette = "Set2") + 
+  labs(
+    title = "JAMB Scores by IT Knowledge",
+    x = "IT Knowledge Level",
+    y = "JAMB Score",
+    fill = "IT Knowledge"
+  ) +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14),
+    legend.position = "none" 
+  )
+
+```
+
+
+
+# Data Analysis and Results
+
+## Preprocessing
+```{r}
+# Convert categorical variables to dummy variables
+# Convert columns to factors with specified levels and orders
+data$School_Type <- factor(data$School_Type)
+data$School_Location <- factor(data$School_Location)
+data$Extra_Tutorials <- factor(data$Extra_Tutorials)
+data$Access_To_Learning_Materials <- factor(data$Access_To_Learning_Materials)
+
+# Ordered factors with specified levels
+data$Parent_Involvement <- factor(data$Parent_Involvement, levels = c("Low", "Medium", "High"), ordered = TRUE)
+data$IT_Knowledge <- factor(data$IT_Knowledge, levels = c("Low", "Medium", "High"), ordered = TRUE)
+data$Gender <- factor(data$Gender)
+data$Socioeconomic_Status <- factor(data$Socioeconomic_Status, levels = c("Low", "Medium", "High"), ordered = TRUE)
+data$Parent_Education_Level <- factor(data$Parent_Education_Level, levels = c("Primary", "Secondary", "Tertiary"), ordered = TRUE)
+
+# transforming jamb scores into percentiles
+
+# data$JAMB_Score_Percentile <- rank(data$JAMB_Score) / 5000 * 100 
+
+```
+
+### Initial Model
+
+```{r}
+clean_data <- na.omit(data)
+# initial model with all predictors, ordinary linear regression
+initial_model <- lm(JAMB_Score ~ ., data = clean_data)
+summary(initial_model)
+```
+
+## Model Selection
+
+### Forward Stepwise Selection
+
+```{r}
+# Using forward stepwise selection based on AIC
+library(MASS)
+
+step_model <- stepAIC(initial_model)
+```
+
+## Final Model Diagnosics
+
+### Residual Analysis
+
+```{r}
+# Plot residuals
+par(mfrow = c(2, 2))
+plot(step_model)
+```
+
+### Normality of Residuals
+
+```{r}
+shapiro.test(residuals(step_model))
+```
+
+### Homoscedasticity
+```{r}
+# Breusch-Pagan test
+library(lmtest)
+bptest(step_model)
+```
+
+### Multicollinearity
+
+```{r}
+# Variance Inflation Factor (VIF)
+vif(step_model)
+```
+
+# Final Regression Model
+
+```{r}
+summary(step_model)
+```
+
+
+
+
