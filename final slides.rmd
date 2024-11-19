@@ -7,8 +7,7 @@ output:
     slide_level: 2
 ---
 
-\
-
+ 
 The primary objective of this study is to investigate the factors that influence students' JAMB scores (Joint Admissions and Matriculation Board scores). Specifically, we aim to answer the following questions:
 
 - How do study habits and attendance affect JAMB scores?
@@ -381,7 +380,7 @@ ggplot(data, aes(x = IT_Knowledge, y = JAMB_Score, fill = IT_Knowledge)) +
 Before fitting any model, we must first preprocess the data. There are a few things we need to handle:
 
 - A lot of the features are categorical, so we need to transform them into numerical data using R's `factor` function.
-- JAMB scores have a range from 100 to 400 (and scores above 300 is very rare,) so near the bottom and the top quintile of the data, the residuals might be capped and we'd have issue with Homoscedasticity. Indeed, when we fit an OLS model with the whole data set, we see the Q-Q Residual graph suggesting thinner tails than normal. This is alleviated by discarding the top and bottom 5% of the data.
+- JAMB scores have a range from 100 to 400 (and scores above 300 is very rare,) so near the bottom and the top quintile of the data, the residuals might be capped and we'd have issue with Homoscedasticity. Indeed, when we fit an OLS model with the whole data set, we see the Q-Q Residual graph suggesting thinner tails than normal. This is alleviated by discarding the top and bottom 10% of the data.
 
 
 
@@ -406,8 +405,8 @@ data$Parent_Education_Level <- factor(data$Parent_Education_Level, levels = c("P
 
 # Remove outliers from the 5th to 95th percentile for continuous variables
 remove_outliers <- function(data, column) {
-  lower_bound <- quantile(data[[column]], 0.05, na.rm = TRUE)
-  upper_bound <- quantile(data[[column]], 0.95, na.rm = TRUE)
+  lower_bound <- quantile(data[[column]], 0.10, na.rm = TRUE)
+  upper_bound <- quantile(data[[column]], 0.90, na.rm = TRUE)
   data <- data[data[[column]] >= lower_bound & data[[column]] <= upper_bound, ]
   return(data)
 }
@@ -435,7 +434,7 @@ summary(initial_model)
 # Model Selection
 Here we utilize a stepwise selection method based on AIC. We start with the initial model with all the features, and each step we add or subtract one predictor at a time that minimizes the Akaike Information Criterion. We repeat this until there's no improvement possible.
 
-### Forward Stepwise Selection
+### Stepwise Selection
 ```{r, include=FALSE}
 library(MASS)
 ```
